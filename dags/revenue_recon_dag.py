@@ -13,7 +13,13 @@ with DAG(
     catchup=False,
     tags=["cdr", "batch"],
 ) as dag:
+    run_cmd = """
+    RUN_ID={{ dag_run.conf.get('run_id') or ts_nodash }}
+    echo "Running revenue_recon with run_id=$RUN_ID"
+    spark-submit --master spark://spark-master:7077 /opt/cdr/jobs/revenue_recon.py --input /data/cdr_data.csv --output /output/revenue_reconciliation --run_id $RUN_ID
+    """
+
     BashOperator(
-        task_id="placeholder_revenue_recon",
-        bash_command='echo "revenue reconciliation pipeline placeholder"',
+        task_id="run_revenue_recon",
+        bash_command=run_cmd,
     )
