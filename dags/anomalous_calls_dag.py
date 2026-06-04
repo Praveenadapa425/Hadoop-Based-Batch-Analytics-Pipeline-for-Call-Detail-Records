@@ -13,7 +13,13 @@ with DAG(
     catchup=False,
     tags=["cdr", "batch"],
 ) as dag:
+    run_cmd = """
+    RUN_ID={{ dag_run.conf.get('run_id') or ts_nodash }}
+    echo "Running anomalous_calls with run_id=$RUN_ID"
+    spark-submit --master spark://spark-master:7077 /opt/cdr/jobs/anomalous_calls.py --input /data/cdr_data.csv --output /output/anomalous_call_detection --run_id $RUN_ID
+    """
+
     BashOperator(
-        task_id="placeholder_anomalous_calls",
-        bash_command='echo "anomalous calls pipeline placeholder"',
+        task_id="run_anomalous_calls",
+        bash_command=run_cmd,
     )
