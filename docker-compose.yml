@@ -1,0 +1,140 @@
+x-airflow-env: &airflow-env
+  AIRFLOW__CORE__EXECUTOR: SequentialExecutor
+  AIRFLOW__CORE__LOAD_EXAMPLES: "False"
+  AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "False"
+  AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: sqlite:////opt/airflow/airflow.db
+  AIRFLOW__WEBSERVER__EXPOSE_CONFIG: "True"
+  AIRFLOW__WEBSERVER__WEB_SERVER_PORT: "8080"
+  AIRFLOW__SCHEDULER__DAG_DIR_LIST_INTERVAL: "30"
+  AIRFLOW_UID: "50000"
+
+services:
+  namenode:
+    image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
+    hostname: namenode
+    ports:
+      - "9870:9870"
+    environment:
+      CLUSTER_NAME: cdr-pipeline
+      CORE_CONF_fs_defaultFS: hdfs://namenode:8020
+      HDFS_CONF_dfs_replication: 1
+    volumes:
+      - namenode_data:/hadoop/dfs/name
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9870"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  datanode:
+    image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
+    hostname: datanode
+    environment:
+      CORE_CONF_fs_defaultFS: hdfs://namenode:8020
+    volumes:
+      - datanode_data:/hadoop/dfs/data
+    depends_on:
+      namenode:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9864"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  spark-master:
+    image: bitnami/spark:3.5
+    hostname: spark-master
+    ports:
+      - "7077:7077"
+      - "8081:8080"
+    environment:
+      SPARK_MODE: master
+      SPARK_MASTER_HOST: spark-master
+      SPARK_MASTER_PORT: 7077
+      SPARK_MASTER_WEBUI_PORT: 8080
+    depends_on:
+      namenode:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  spark-worker:
+    image: bitnami/spark:3.5
+    hostname: spark-worker
+    environment:
+      SPARK_MODE: worker
+      SPARK_MASTER_URL: spark://spark-master:7077
+      SPARK_WORKER_WEBUI_PORT: 8081
+      SPARK_WORKER_CORES: 2
+      SPARK_WORKER_MEMORY: 2G
+    depends_on:
+      spark-master:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  data-generator:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    hostname: data-generator
+    command: ["/bin/bash", "-lc", "/opt/cdr/data/generate_records.sh && tail -f /dev/null"]
+    volumes:
+      - cdr_data:/data
+      - ./data:/opt/cdr/data
+    healthcheck:
+      test: ["CMD", "test", "-f", "/data/cdr_data.csv"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  airflow:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    hostname: airflow
+    command:
+      - /bin/bash
+      - -lc
+      - >-
+        airflow db migrate &&
+        airflow users create --username admin --password admin --firstname Admin --lastname User --role Admin --email admin@example.com || true &&
+        airflow webserver &
+        airflow scheduler &
+        wait
+    environment:
+      <<: *airflow-env
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./jobs:/opt/cdr/jobs
+      - ./data:/opt/cdr/data
+      - cdr_data:/data
+      - ./output:/output
+    depends_on:
+      namenode:
+        condition: service_healthy
+      data-generator:
+        condition: service_healthy
+      spark-master:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+volumes:
+  namenode_data:
+  datanode_data:
+  cdr_data:
