@@ -1,0 +1,36 @@
+# OS
+Thumbs.db
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.Python
+venv/
+env/
+.venv/
+
+# VSCode
+.vscode/
+
+# Logs and outputs
+/output/
+*.log
+
+# Docker
+**/docker-compose.override.yml
+docker-compose.override.yml
+*.tar
+*.img
+
+# Docker volumes and runtime state (do not commit large generated data)
+hadoop-basedbatchanalyticspipelineforcalldetailrecords_cdr_data/
+
+# Temporary scripts
+/scripts/*.ps1
+/scripts/*.sh
+
+# Misc
+.idea/
+*.swp
