@@ -9,6 +9,7 @@ x-airflow-env: &airflow-env
   AIRFLOW_UID: "50000"
 
 services:
+
   namenode:
     image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
     hostname: namenode
@@ -18,6 +19,7 @@ services:
       CLUSTER_NAME: cdr-pipeline
       CORE_CONF_fs_defaultFS: hdfs://namenode:8020
       HDFS_CONF_dfs_replication: 1
+      HDFS_CONF_dfs_namenode_datanode_registration_ip___hostname___check: "false"
     volumes:
       - namenode_data:/hadoop/dfs/name
     healthcheck:
@@ -31,6 +33,7 @@ services:
     hostname: datanode
     environment:
       CORE_CONF_fs_defaultFS: hdfs://namenode:8020
+      CORE_CONF_net_topology_node_switch_mapping_impl: org.apache.hadoop.net.ScriptBasedMapping
     volumes:
       - datanode_data:/hadoop/dfs/data
     depends_on:
@@ -101,22 +104,24 @@ services:
       retries: 5
 
   data-generator:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: runtime
-    hostname: data-generator
-    user: root
-    entrypoint: ["/bin/bash", "-lc"]
-    command: ["/opt/cdr/data/generate_records.sh && tail -f /dev/null"]
-    volumes:
-      - cdr_data:/data
-      - ./data:/opt/cdr/data
-    healthcheck:
-      test: ["CMD", "test", "-f", "/data/cdr_data.csv"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
+   build:
+    context: .
+    dockerfile: Dockerfile
+    target: runtime
+   hostname: data-generator
+   user: root
+   entrypoint: ["/bin/bash", "-lc"]
+   command: >
+     /opt/cdr/data/generate_records.sh;
+     tail -f /dev/null
+   volumes:
+     - cdr_data:/data
+     - ./data:/opt/cdr/data
+   healthcheck:
+     test: ["CMD", "test", "-f", "/data/cdr_data.csv"]
+     interval: 30s
+     timeout: 10s
+     retries: 5
 
   airflow:
     build:
@@ -125,13 +130,12 @@ services:
       target: runtime
     hostname: airflow
     entrypoint: ["/bin/bash", "-lc"]
-    command:
-      - |
-        airflow db migrate
-        airflow users create --username admin --password admin --firstname Admin --lastname User --role Admin --email admin@example.com || true
-        airflow webserver &
-        airflow scheduler &
-        wait
+    command: >
+      airflow db migrate &&
+      airflow users create --username admin --password admin --firstname Admin --lastname User --role Admin --email admin@example.com || true &&
+      airflow webserver &
+      airflow scheduler &
+      wait
     environment:
       <<: *airflow-env
     ports:
