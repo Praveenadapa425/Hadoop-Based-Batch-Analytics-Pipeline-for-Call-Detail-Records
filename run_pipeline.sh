@@ -26,4 +26,18 @@ case "$1" in
 esac
 
 RUN_ID="$(date +%Y%m%d_%H%M%S)"
-airflow dags trigger -r "$RUN_ID" --conf "{\"run_id\":\"$RUN_ID\"}" "$DAG_ID"
+
+TRIGGER_CMD=(airflow dags trigger -r "$RUN_ID" --conf "{\"run_id\":\"$RUN_ID\"}" "$DAG_ID")
+
+if command -v airflow >/dev/null 2>&1; then
+  "${TRIGGER_CMD[@]}"
+elif command -v docker >/dev/null 2>&1 && docker compose ps airflow >/dev/null 2>&1; then
+  docker compose exec -T airflow "${TRIGGER_CMD[@]}"
+elif command -v docker-compose >/dev/null 2>&1 && docker-compose ps airflow >/dev/null 2>&1; then
+  docker-compose exec -T airflow "${TRIGGER_CMD[@]}"
+else
+  echo "Airflow CLI is not available. Start the stack with docker-compose up --build first." >&2
+  exit 1
+fi
+
+echo "Triggered $DAG_ID with run_id=$RUN_ID"

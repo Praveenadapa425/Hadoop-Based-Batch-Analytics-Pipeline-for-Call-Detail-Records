@@ -16,7 +16,7 @@ with DAG(
     run_cmd = """
     RUN_ID={{ dag_run.conf.get('run_id') or ts_nodash }}
     echo "Running anomalous_calls with run_id=$RUN_ID"
-    spark-submit --master spark://spark-master:7077 /opt/cdr/jobs/anomalous_calls.py --input /data/cdr_data.csv --output /output/anomalous_call_detection --run_id $RUN_ID
+    /opt/spark/bin/spark-submit --master local[*] /opt/cdr/jobs/anomalous_calls.py --input /data/cdr_data.csv --output /output/anomalous_call_detection --run_id $RUN_ID
     """
 
     BashOperator(

@@ -45,7 +45,7 @@ def main() -> None:
 
     agg = df2.groupBy("tower_id", "hour_of_day").agg(_count("tower_id").alias("call_count"))
 
-    out_dir, manifest_path = make_output_paths(job_name, run_id)
+    out_dir, manifest_path = make_output_paths(args.output, run_id)
     out_path = Path(out_dir)
 
     tmp_path = out_path / "tmp_heat"

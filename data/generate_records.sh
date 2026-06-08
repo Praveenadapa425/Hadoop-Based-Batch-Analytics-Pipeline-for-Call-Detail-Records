@@ -59,6 +59,7 @@ def make_receiver(index: int) -> str:
 
 with open(output_file, "w", newline="", encoding="utf-8") as handle:
 	writer = csv.writer(handle)
+	record_index = 0
 	for index in range(whale_records):
 		duration_sec = random.randint(30, 1800)
 		call_type = random.choice(call_types)
@@ -74,12 +75,37 @@ with open(output_file, "w", newline="", encoding="utf-8") as handle:
 			make_receiver(index),
 			duration_sec,
 			random.choice(towers),
-			make_timestamp(index),
+			make_timestamp(record_index),
 			call_type,
 			charge_amount,
 		])
+		record_index += 1
 
-	for index in range(other_records):
+	anomaly_callers = 100
+	normal_calls_per_anomaly_user = 20
+	anomaly_records = min(other_records, anomaly_callers * (normal_calls_per_anomaly_user + 1))
+	full_anomaly_users = anomaly_records // (normal_calls_per_anomaly_user + 1)
+
+	for user_index in range(full_anomaly_users):
+		caller_id = f"caller_anomaly_{user_index:04d}"
+		for call_index in range(normal_calls_per_anomaly_user + 1):
+			duration_sec = 60 if call_index < normal_calls_per_anomaly_user else 1000
+			call_type = "VOICE"
+			charge_amount = round(duration_sec * 0.0042 + 0.25, 2)
+			writer.writerow([
+				caller_id,
+				make_receiver(record_index),
+				duration_sec,
+				random.choice(towers),
+				make_timestamp(record_index),
+				call_type,
+				charge_amount,
+			])
+			record_index += 1
+
+	remaining_other_records = other_records - (full_anomaly_users * (normal_calls_per_anomaly_user + 1))
+
+	for index in range(remaining_other_records):
 		caller_id = make_caller(index + 1)
 		if caller_id == whale_caller_id:
 			caller_id = f"caller_{index + 1000000:07d}"
@@ -95,11 +121,12 @@ with open(output_file, "w", newline="", encoding="utf-8") as handle:
 
 		writer.writerow([
 			caller_id,
-			make_receiver(index + whale_records),
+			make_receiver(record_index),
 			duration_sec,
 			random.choice(towers),
-			make_timestamp(index + whale_records),
+			make_timestamp(record_index),
 			call_type,
 			charge_amount,
 		])
+		record_index += 1
 PY

@@ -16,7 +16,7 @@ with DAG(
     run_cmd = """
     RUN_ID={{ dag_run.conf.get('run_id') or ts_nodash }}
     echo "Running revenue_recon with run_id=$RUN_ID"
-    spark-submit --master spark://spark-master:7077 /opt/cdr/jobs/revenue_recon.py --input /data/cdr_data.csv --output /output/revenue_reconciliation --run_id $RUN_ID
+    /opt/spark/bin/spark-submit --master spark://spark-master:7077 /opt/cdr/jobs/revenue_recon.py --input /data/cdr_data.csv --output /output/revenue_reconciliation --run_id $RUN_ID
     """
 
     BashOperator(

@@ -43,16 +43,27 @@ services:
       retries: 5
 
   spark-master:
-    image: bitnami/spark:3.5
+    image: spark:3.5.8-python3
     hostname: spark-master
+    user: root
     ports:
       - "7077:7077"
       - "8081:8080"
     environment:
-      SPARK_MODE: master
       SPARK_MASTER_HOST: spark-master
       SPARK_MASTER_PORT: 7077
       SPARK_MASTER_WEBUI_PORT: 8080
+      PYTHONPATH: /opt/cdr
+    command: >
+      /opt/spark/bin/spark-class org.apache.spark.deploy.master.Master
+      --host spark-master
+      --port 7077
+      --webui-port 8080
+    volumes:
+      - ./jobs:/opt/cdr/jobs
+      - ./src:/opt/cdr/src
+      - cdr_data:/data
+      - ./output:/output
     depends_on:
       namenode:
         condition: service_healthy
@@ -63,14 +74,23 @@ services:
       retries: 5
 
   spark-worker:
-    image: bitnami/spark:3.5
+    image: spark:3.5.8-python3
     hostname: spark-worker
+    user: root
     environment:
-      SPARK_MODE: worker
-      SPARK_MASTER_URL: spark://spark-master:7077
       SPARK_WORKER_WEBUI_PORT: 8081
       SPARK_WORKER_CORES: 2
       SPARK_WORKER_MEMORY: 2G
+      PYTHONPATH: /opt/cdr
+    command: >
+      /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker
+      --webui-port 8081
+      spark://spark-master:7077
+    volumes:
+      - ./jobs:/opt/cdr/jobs
+      - ./src:/opt/cdr/src
+      - cdr_data:/data
+      - ./output:/output
     depends_on:
       spark-master:
         condition: service_healthy
@@ -86,7 +106,9 @@ services:
       dockerfile: Dockerfile
       target: runtime
     hostname: data-generator
-    command: ["/bin/bash", "-lc", "/opt/cdr/data/generate_records.sh && tail -f /dev/null"]
+    user: root
+    entrypoint: ["/bin/bash", "-lc"]
+    command: ["/opt/cdr/data/generate_records.sh && tail -f /dev/null"]
     volumes:
       - cdr_data:/data
       - ./data:/opt/cdr/data
@@ -102,12 +124,11 @@ services:
       dockerfile: Dockerfile
       target: runtime
     hostname: airflow
+    entrypoint: ["/bin/bash", "-lc"]
     command:
-      - /bin/bash
-      - -lc
-      - >-
-        airflow db migrate &&
-        airflow users create --username admin --password admin --firstname Admin --lastname User --role Admin --email admin@example.com || true &&
+      - |
+        airflow db migrate
+        airflow users create --username admin --password admin --firstname Admin --lastname User --role Admin --email admin@example.com || true
         airflow webserver &
         airflow scheduler &
         wait
@@ -118,6 +139,7 @@ services:
     volumes:
       - ./dags:/opt/airflow/dags
       - ./jobs:/opt/cdr/jobs
+      - ./src:/opt/cdr/src
       - ./data:/opt/cdr/data
       - cdr_data:/data
       - ./output:/output

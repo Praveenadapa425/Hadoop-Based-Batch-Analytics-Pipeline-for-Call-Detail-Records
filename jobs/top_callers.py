@@ -42,7 +42,7 @@ def main() -> None:
     agg = df.groupBy("caller_id").agg(_sum("charge_amount").alias("total_spend"))
     top100 = agg.orderBy(desc("total_spend")).limit(100)
 
-    out_dir, manifest_path = make_output_paths(job_name, run_id)
+    out_dir, manifest_path = make_output_paths(args.output, run_id)
     out_path = Path(out_dir)
 
     # write single CSV file with caller_id,total_spend
@@ -65,7 +65,8 @@ def main() -> None:
         pass
 
     # write manifest
-    write_manifest(manifest_path, job_name=job_name, run_id=run_id, input_path=input_path, output_path=str(out_path), input_record_count=input_count, output_record_count=100, status="SUCCESS")
+    output_count = top100.count()
+    write_manifest(manifest_path, job_name=job_name, run_id=run_id, input_path=input_path, output_path=str(out_path), input_record_count=input_count, output_record_count=output_count, status="SUCCESS")
 
 
 if __name__ == "__main__":

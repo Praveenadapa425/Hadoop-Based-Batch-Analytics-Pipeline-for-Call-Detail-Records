@@ -42,7 +42,7 @@ def main() -> None:
     total_row = df.agg(_sum("charge_amount").alias("total_revenue")).collect()[0]
     total_revenue = float(total_row["total_revenue"]) if total_row["total_revenue"] is not None else 0.0
 
-    out_dir, manifest_path = make_output_paths(job_name, run_id)
+    out_dir, manifest_path = make_output_paths(args.output, run_id)
     out_path = Path(out_dir)
 
     # write total as a single-line text file

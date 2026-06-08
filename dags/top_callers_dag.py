@@ -16,7 +16,7 @@ with DAG(
     run_cmd = """
     RUN_ID={{ dag_run.conf.get('run_id') or ts_nodash }}
     echo "Running top_callers with run_id=$RUN_ID"
-    spark-submit --master spark://spark-master:7077 /opt/cdr/jobs/top_callers.py --input /data/cdr_data.csv --output /output/top_callers_by_spend --run_id $RUN_ID
+    /opt/spark/bin/spark-submit --master local[*] /opt/cdr/jobs/top_callers.py --input /data/cdr_data.csv --output /output/top_callers_by_spend --run_id $RUN_ID
     """
 
     BashOperator(

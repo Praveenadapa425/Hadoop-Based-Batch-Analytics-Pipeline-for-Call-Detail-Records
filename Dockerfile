@@ -2,12 +2,13 @@ FROM apache/airflow:2.8.0 AS runtime
 
 USER root
 
-ARG SPARK_VERSION=3.5.1
+ARG SPARK_VERSION=3.5.8
 ARG HADOOP_VERSION=3
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV SPARK_HOME=/opt/spark
 ENV PATH="${SPARK_HOME}/bin:${PATH}"
+ENV PYTHONPATH=/opt/cdr
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends bash curl ca-certificates openjdk-17-jre-headless tar wget \
@@ -21,6 +22,7 @@ WORKDIR /opt/cdr
 
 COPY data /opt/cdr/data
 COPY jobs /opt/cdr/jobs
+COPY src /opt/cdr/src
 COPY dags /opt/airflow/dags
 COPY run_pipeline.sh /opt/cdr/run_pipeline.sh
 
