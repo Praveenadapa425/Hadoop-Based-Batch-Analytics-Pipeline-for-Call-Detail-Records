@@ -15,9 +15,18 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 RUN mkdir -p /opt/spark \
-    && curl -fsSL "https://archive.apache.org/dist/spark/spark-${SPARK_VERSION}/spark-${SPARK_VERSION}-bin-hadoop${HADOOP_VERSION}.tgz" \
-      | tar -xz -C /opt/spark --strip-components=1
+    && wget -O /tmp/spark.tgz \
+       "https://archive.apache.org/dist/spark/spark-${SPARK_VERSION}/spark-${SPARK_VERSION}-bin-hadoop${HADOOP_VERSION}.tgz" \
+    && tar -xzf /tmp/spark.tgz -C /opt/spark --strip-components=1 \
+    && rm /tmp/spark.tgz
 
+# COPY spark-3.5.8-bin-hadoop3.tgz /tmp/
+
+# RUN mkdir -p /opt/spark \
+#     && tar -xzf /tmp/spark-3.5.8-bin-hadoop3.tgz \
+#        -C /opt/spark --strip-components=1
+      
+      
 WORKDIR /opt/cdr
 
 COPY data /opt/cdr/data
